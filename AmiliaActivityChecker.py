@@ -1,23 +1,3 @@
-'''
-import subprocess
-import sys
-
-# Function to install required libraries
-def install_requirements():
-    try:
-        import pandas
-        import tkinter
-        import tkinterdnd2
-    except ImportError:
-        print("Required libraries not found. Installing now...")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "pandas", "tk", "tkinterdnd2"])
-        print("Requirements installed.")
-
-
-# Run the installation check
-install_requirements()
-'''
-
 import pandas as pd
 import tkinter as tk
 import numpy as np
