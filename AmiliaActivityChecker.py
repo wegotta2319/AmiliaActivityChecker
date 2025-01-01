@@ -82,7 +82,7 @@ def validate_dates_and_cost():
             text_output.delete(1.0, tk.END)
             text_output.insert(tk.END, "Error: Make sure both Cost fields are filled in.")
             return
-    
+        # iterates through each row in the spread sheet
         for i, row in df.iterrows():
             row_start_date = row['Start date'].date()
             row_end_date = row['End date'].date()
@@ -129,7 +129,7 @@ def validate_dates_and_cost():
                 else:
                     num_of_valid_cost += 1
 
-        # Prints the output at the bottom
+        # If only costs are given only prints cost info
         if start_date == None and end_date == None:
                 results_text += (
                 f"\n\nDate Summary:\n\n"
@@ -138,6 +138,7 @@ def validate_dates_and_cost():
                 f"Number of valid costs: {num_of_valid_cost}\n"
                 f"Number of invalid costs: {num_of_invalid_cost}\n"
             )
+        # If only dates are given only prints dates info
         elif min_cost == None and max_cost == None:
             results_text += (
                 f"\n\nDate Summary:\n\n"
@@ -147,6 +148,7 @@ def validate_dates_and_cost():
                 f"Number of invalid end dates: {num_of_wrong_end_date} / {total_num_of_activities}\n\n"
                 f"No price range given to validate.\n"
             )
+        # If both are given print all info
         else:    
             results_text += (
                 f"\n\nDate Summary:\n\n" 
@@ -167,11 +169,12 @@ def validate_dates_and_cost():
         text_output.delete(1.0, tk.END)
         text_output.insert(tk.END, f"Error: {str(e)}")
 
-
+# Handles Drapg and Drop Feature
 def on_file_drop(event):
     file_path.set(event.data)
     label_file_path.config(text=f"Selected File: {event.data}")
 
+# Handles Manual Upload Feature
 def upload_file():
     global file_path
 
