@@ -2,7 +2,9 @@ import pandas as pd
 import tkinter as tk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from tkinter import ttk, filedialog
+from tkinter import *
+from tkcalendar import DateEntry
+from tkinter import ttk, filedialog, StringVar, Toplevel, Listbox
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from datetime import datetime
 
@@ -174,49 +176,124 @@ def validate_dates_and_cost():
         tree_output.delete(*tree_output.get_children())
         tree_output.insert("", "end", values=("Error", "Exception", str(e)))
 
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import matplotlib.pyplot as plt
 
-# Function to update the dashboard
-def update_dashboard(filtered_data):
-    # Clear the existing frame
-    for widget in frame_dashboard.winfo_children():
-        widget.destroy()
+def hide_calendar(event):
+    if event.widget not in (entry_start_date, entry_end_date):
+        entry_start_date.place_forget()
+        entry_end_date.place_forget()
 
-    if filtered_data.empty:
-        ttk.Label(frame_dashboard, text="No data available for analytics.", font=("Arial", 12)).pack()
-        return
+def show_calendar(event=None):
+    global calendar_start
+    calendar_start = DateEntry(window, date_pattern="mm/dd/yyyy")
+    calendar_start.place(x=entry_start_date.winfo_x(), y=entry_start_date.winfo_y() + entry_start_date.winfo_height())
+    calendar_start.bind("<FocusOut>", lambda e: calendar_start.place_forget())
 
-    # Create a figure for the chart
-    fig, ax = plt.subplots(figsize=(8, 5))  # Adjust figsize to control chart size
 
-    # Plotting logic
-    filtered_data['Start date'] = pd.to_datetime(filtered_data['Start date'])
-    activities_per_month = filtered_data.groupby(filtered_data['Start date'].dt.to_period('M')).size()
-    activities_per_month.index = activities_per_month.index.astype(str)
-    ax.bar(activities_per_month.index, activities_per_month.values, color='skyblue')
+def show_calendar_end(event=None):
+    global calendar_end
+    calendar_end = DateEntry(window, date_pattern = "mm/dd/yyyy")
+    calendar_end.place(x=entry_start_date.winfo_x(), y=entry_start_date.winfo_y() + entry_start_date.winfo_height())
+    calendar_end.bind("<FocusOut>", lambda e: calendar_start.place_forget())
 
-    ax.set_title("Activities per Month")
-    ax.set_xlabel("Month")
-    ax.set_ylabel("Number of Activities")
-    ax.tick_params(axis='x', rotation=45)
+# Function to extract ledger codes after file upload:
+def extract_ledger_codes():
+    if not file_path.get():
+        label_file_path.config(text="No file selected.")
+        return []
+    try:
+        df = pd.read_excel(file_path.get())
+        if 'Ledger code' not in df.columns:
+            label_file_path.config(text="No 'Ledger code' column found in the file.")
+            return []
+        unique_ledger_codes = df['Ledger code'].dropna().unique()
+        return sorted(map(str, unique_ledger_codes))
+    except Exception as e:
+        label_file_path.config(text=f"Error reading file: {e}")
+        return []
 
-    # Ensure the chart layout fits properly
-    plt.tight_layout()
+# Autocomplete functionality
+def autocomplete_ledger_code(event):
+    if 'suggestion_box' not in globals():
+        setup_suggestion_box()
 
-    # Embed the chart in the Tkinter frame
-    canvas = FigureCanvasTkAgg(fig, master=frame_dashboard)
-    canvas_widget = canvas.get_tk_widget()
-    canvas_widget.pack(fill=tk.BOTH, expand=True)
+    # Get the current input
+    query = entry_ledger_code.get().lower()
 
-    # Add scrollbars if needed
-    scrollbar_y = ttk.Scrollbar(frame_dashboard, orient="vertical", command=canvas_widget.yview)
-    scrollbar_y.pack(side=tk.RIGHT, fill=tk.Y)
+    # Filter ledger codes based on input
+    filtered_codes = [code for code in ledger_codes if query in code.lower()]
 
-    scrollbar_x = ttk.Scrollbar(frame_dashboard, orient="horizontal", command=canvas_widget.xview)
-    scrollbar_x.pack(side=tk.BOTTOM, fill=tk.X)
+    # Update the suggestion box
+    suggestion_box.delete(0, tk.END)
+    for code in filtered_codes:
+        suggestion_box.insert(tk.END, code)
 
-    canvas_widget.configure(scrollregion=canvas_widget.bbox("all"))
+    # Adjust height dynamically based on the filtered results
+    suggestion_box.config(height=min(10, len(filtered_codes)))
+
+    # Show the suggestion box
+    show_suggestion_box()
+
+
+def update_suggestion_box(suggestions):
+    suggestion_box.delete(0, tk.END)
+    for suggestion in suggestions:
+        suggestion_box.insert(tk.END, suggestion)
+
+# Function to handle suggestion selection
+def select_suggestion(event):
+    selected_index = suggestion_box.curselection()
+    if selected_index:
+        selected_code = suggestion_box.get(selected_index)
+        entry_ledger_code.delete(0, tk.END)
+        entry_ledger_code.insert(0, selected_code)
+    suggestion_box.place_forget()  # Hide the suggestion box after selection
+
+# Setup ledger code suggestion box
+def setup_suggestion_box():
+    global suggestion_box, ledger_codes
+
+    # Extract ledger codes
+    ledger_codes = extract_ledger_codes()
+
+    # Initialize suggestion box if not already created
+    if 'suggestion_box' not in globals():
+        suggestion_box = Listbox(window)
+
+        # Handle selection from the suggestion box
+        suggestion_box.bind("<<ListboxSelect>>", select_suggestion)
+
+    # Dynamically adjust suggestion box height to fit the number of ledger codes
+    suggestion_box.config(height=min(10, len(ledger_codes)))  # Show up to 10 items
+
+    # Bind <FocusOut> to the root window to hide the suggestion box
+    window.bind("<Button-1>", handle_focus_out)
+
+def handle_focus_out(event):
+    # Get the widget under the mouse pointer
+    widget = event.widget
+
+    # Check if the clicked widget is not the suggestion box or entry field
+    if widget not in (entry_ledger_code, suggestion_box):
+        suggestion_box.place_forget()
+
+
+# Trigger suggestion box placement
+def show_suggestion_box(event=None):
+    if 'suggestion_box' not in globals():
+        setup_suggestion_box()
+
+    # Populate the suggestion box with all ledger codes
+    suggestion_box.delete(0, tk.END)  # Clear any existing items
+    for code in ledger_codes:
+        suggestion_box.insert(tk.END, code)
+
+    # Position the suggestion box below the entry field
+    x = entry_ledger_code.winfo_rootx() - window.winfo_rootx()
+    y = entry_ledger_code.winfo_rooty() + entry_ledger_code.winfo_height() - window.winfo_rooty()
+    suggestion_box.place(x=x, y=y, width=entry_ledger_code.winfo_width())
+
+    # Ensure entry retains focus to allow typing
+    entry_ledger_code.focus_set()
 
 
 # Allows user to drag and drop a file to be proccessed
@@ -326,10 +403,6 @@ button_upload.grid(row=0, column=2, padx=5)
 button_quit = ttk.Button(frame_buttons, text="Quit", command=quit_program, style="TButton.quit.TButton")
 button_quit.grid(row=0, column=3, padx=5)
 
-#optional feature (bar graph but it makes it too crowded)
-#button_refresh = ttk.Button(frame_dashboard, text="Refresh Analytics", command=lambda: update_dashboard(filtered_df))
-#button_refresh.pack(pady=5)
-
 # Treeview for output
 tree_output = ttk.Treeview(frame_output, columns=("Activity", "Issue", "Details"), show="headings", height=15)
 tree_output.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
@@ -355,9 +428,63 @@ window.rowconfigure(1, weight=1)
 frame_output.columnconfigure(0, weight=1)
 frame_output.rowconfigure(0, weight=1)
 
+# ledger code drop box
+entry_ledger_code.bind("<FocusIn>", show_suggestion_box)
+entry_ledger_code.bind("<FocusOut>", lambda _: suggestion_box.place_forget())
+
+# Add ledger code suggestion setup after file upload
+button_upload.config(command=lambda: [upload_file(), setup_suggestion_box()])
+
 # Key Bindings
 window.bind("<Return>", lambda event: validate_dates_and_cost())
 window.bind("<Escape>", lambda event: quit_program())
+
+# Calendar implementation
+entry_start_date = DateEntry(
+    frame_inputs,
+    width=12,
+    background='blue',          # Dropdown calendar background
+    foreground='white',         # Text color in the dropdown calendar
+    borderwidth=2,              # Border thickness
+    arrowsize=15,               # Arrow size for navigating months/years
+    font=("Arial", 12),         # Font for text
+    headersbackground='white',  # Header background (month/year, weekdays)
+    headersforeground='black',  # Header text color
+    selectbackground='blue',    # Selected date background
+    selectforeground='white',   # Selected date text color
+    normalbackground='white',   # Weekday cell background
+    normalforeground='blue',    # Weekday cell text color
+    weekendbackground='lightblue',  # Weekend cell background
+    weekendforeground='darkblue',   # Weekend cell text color
+    othermonthbackground='lightgray',  # Other month days background
+    othermonthforeground='blue'  # Other month days text color
+)
+entry_start_date.grid(row=1, column=1, sticky="ew", pady=5)
+
+
+entry_end_date = DateEntry(
+    frame_inputs,
+    width=12,
+    background='blue',          # Dropdown calendar background
+    foreground='white',         # Text color in the dropdown calendar
+    borderwidth=2,              # Border thickness
+    arrowsize=15,               # Arrow size for navigating months/years
+    font=("Arial", 12),         # Font for text
+    headersbackground='white',  # Header background (month/year, weekdays)
+    headersforeground='black',  # Header text color
+    selectbackground='blue',    # Selected date background
+    selectforeground='white',   # Selected date text color
+    normalbackground='white',   # Weekday cell background
+    normalforeground='blue',    # Weekday cell text color
+    weekendbackground='lightblue',  # Weekend cell background
+    weekendforeground='darkblue',   # Weekend cell text color
+    othermonthbackground='lightgray',  # Other month days background
+    othermonthforeground='blue'  # Other month days text color
+
+)
+entry_end_date.grid(row=2, column=1, sticky="ew", pady=5)
+
+window.bind("<FocusOut>", hide_calendar)
 
 # Start the GUI loop
 window.mainloop()
