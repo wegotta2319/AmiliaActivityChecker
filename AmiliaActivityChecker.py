@@ -2,6 +2,7 @@ import pandas as pd
 import tkinter as tk
 import matplotlib.pyplot as plt
 import re
+import difflib
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import *
 from tkcalendar import DateEntry
@@ -16,6 +17,41 @@ entry_end_date = None
 entry_min_cost = None
 entry_max_cost = None
 entry_ledger_code = None
+
+# Function to search through Treeview
+def search_treeview(treeview, search_term):
+    search_terms = [term.strip().lower() for term in search_term.split()]  # Split and lowercase all search terms
+    
+    if not search_terms:
+        messagebox.showinfo("Search", "Please enter a search term.")
+        return
+    
+    found = False
+    
+    # Loop through the items in the Treeview and remove any previous highlights
+    for item in treeview.get_children():
+        treeview.item(item, tags=())  # Remove any previous highlight tag
+    
+    # Loop through the items again to find matches
+    for item in treeview.get_children():
+        item_values = treeview.item(item, "values")
+        
+        # Check if all search terms are found in any of the columns as substrings
+        if all(term in str(value).lower() for value in item_values for term in search_terms):
+            found = True
+            # Highlight the matching item by setting a tag
+            treeview.item(item, tags=('highlight',))
+    
+    if not found:
+        messagebox.showinfo("Search", "No similar matches found.")
+    else:
+        # Apply the highlight tag with a background color change
+        treeview.tag_configure('highlight', background='yellow')
+
+def search_output():
+    search_term = search_entry.get()  # Get the search term from the user input
+    search_treeview(tree_output, search_term)  # Perform search in the Treeview
+
 
 def validate_dates_and_cost():
     try:
@@ -56,6 +92,7 @@ def validate_dates_and_cost():
         df = pd.read_excel(file_path.get(), sheet_name=sheet_name)
         global filtered_df
         filtered_df = df
+        
         # Changes user date inputs to 'date' data type in order to be compared to the sheet dates
         start_date = datetime.strptime(start_date_input, "%m/%d/%Y").date() if start_date_input else None
         end_date = datetime.strptime(end_date_input, "%m/%d/%Y").date() if end_date_input else None
@@ -179,14 +216,14 @@ def validate_dates_and_cost():
 
 def show_calendar_start(event=None):
     global calendar_start
-    calendar_start = DateEntry(window, date_pattern="mm/dd/yyyy")
+    calendar_start = DateEntry(window, date_pattern="MM/dd/yyyy")
     calendar_start.place(x=entry_start_date.winfo_x(), y=entry_start_date.winfo_y() + entry_start_date.winfo_height())
     calendar_start.bind("<FocusOut>", lambda e: calendar_start.place_forget())
 
 
 def show_calendar_end(event=None):
     global calendar_end
-    calendar_end = DateEntry(window, date_pattern = "mm/dd/yyyy")
+    calendar_end = DateEntry(window, date_pattern = "MM/dd/yyyy")
     calendar_end.place(x=entry_start_date.winfo_x(), y=entry_start_date.winfo_y() + entry_start_date.winfo_height())
     calendar_end.bind("<FocusOut>", lambda e: calendar_start.place_forget())
 
@@ -464,7 +501,6 @@ entry_start_date = DateEntry(
 )
 entry_start_date.grid(row=1, column=1, sticky="ew", pady=5)
 
-
 entry_end_date = DateEntry(
     frame_inputs,
     width=12,
@@ -483,12 +519,20 @@ entry_end_date = DateEntry(
     weekendforeground='darkblue',
     othermonthbackground='lightgray',
     othermonthforeground='blue'
-
 )
 entry_end_date.grid(row=2, column=1, sticky="ew", pady=5)
 
 # Handels hiding the calendar if the user clicks else where
 window.bind("<Button-1>", hide_calendar)
+
+# Search button and bar
+ttk.Label(frame_inputs, text="Search Activity:").grid(row=8, column=0, sticky="w", pady=5)
+search_entry = ttk.Entry(frame_inputs, width=40)
+search_entry.grid(row=8, column=1, pady=5)
+
+btn_search = ttk.Button(frame_inputs, text="Search", command=search_output)
+btn_search.grid(row=8, column=2, sticky="e", pady=5)
+
 
 # Start the GUI loop
 window.mainloop()
