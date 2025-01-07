@@ -1,14 +1,15 @@
 import pandas as pd
 import tkinter as tk
 import matplotlib.pyplot as plt
+import re
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import *
 from tkcalendar import DateEntry
-from tkinter import ttk, filedialog, StringVar, Toplevel, Listbox
+from tkinter import ttk, filedialog, StringVar, Toplevel, Listbox, messagebox
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from datetime import datetime
 
-#initialization of variable to take user input
+# Initialization of variable to take user input
 entry_sheet_name = None
 entry_start_date = None
 entry_end_date = None
@@ -176,13 +177,7 @@ def validate_dates_and_cost():
         tree_output.delete(*tree_output.get_children())
         tree_output.insert("", "end", values=("Error", "Exception", str(e)))
 
-
-def hide_calendar(event):
-    if event.widget not in (entry_start_date, entry_end_date):
-        entry_start_date.place_forget()
-        entry_end_date.place_forget()
-
-def show_calendar(event=None):
+def show_calendar_start(event=None):
     global calendar_start
     calendar_start = DateEntry(window, date_pattern="mm/dd/yyyy")
     calendar_start.place(x=entry_start_date.winfo_x(), y=entry_start_date.winfo_y() + entry_start_date.winfo_height())
@@ -194,6 +189,14 @@ def show_calendar_end(event=None):
     calendar_end = DateEntry(window, date_pattern = "mm/dd/yyyy")
     calendar_end.place(x=entry_start_date.winfo_x(), y=entry_start_date.winfo_y() + entry_start_date.winfo_height())
     calendar_end.bind("<FocusOut>", lambda e: calendar_start.place_forget())
+
+def hide_calendar(event):
+    if 'calendar_start' in globals() and 'calendar_end' in globals():
+        if event.widget not in (entry_start_date, entry_end_date, calendar_start, calendar_end):
+            if calendar_start.winfo_ismapped():
+                calendar_start.place_forget()
+            if calendar_end.winfo_ismapped():
+                calendar_end.place_forget()
 
 # Function to extract ledger codes after file upload:
 def extract_ledger_codes():
@@ -339,7 +342,7 @@ window.geometry("800x600")
 
 # Set ttk theme
 style = ttk.Style()
-style.theme_use("classic")
+style.theme_use("clam")
 
 # Styling for all the buttons
 style.configure("TButton", font=("Arial", 12))  # Default style for all buttons
@@ -439,25 +442,25 @@ button_upload.config(command=lambda: [upload_file(), setup_suggestion_box()])
 window.bind("<Return>", lambda event: validate_dates_and_cost())
 window.bind("<Escape>", lambda event: quit_program())
 
-# Calendar implementation
+# Calendar implementation and customization
 entry_start_date = DateEntry(
     frame_inputs,
     width=12,
-    background='blue',          # Dropdown calendar background
-    foreground='white',         # Text color in the dropdown calendar
-    borderwidth=2,              # Border thickness
-    arrowsize=15,               # Arrow size for navigating months/years
-    font=("Arial", 12),         # Font for text
-    headersbackground='white',  # Header background (month/year, weekdays)
-    headersforeground='black',  # Header text color
-    selectbackground='blue',    # Selected date background
-    selectforeground='white',   # Selected date text color
-    normalbackground='white',   # Weekday cell background
-    normalforeground='blue',    # Weekday cell text color
-    weekendbackground='lightblue',  # Weekend cell background
-    weekendforeground='darkblue',   # Weekend cell text color
-    othermonthbackground='lightgray',  # Other month days background
-    othermonthforeground='blue'  # Other month days text color
+    background='blue',
+    foreground='white',
+    borderwidth=2,
+    arrowsize=15,
+    font=("Arial", 12),
+    headersbackground='white',
+    headersforeground='black',
+    selectbackground='blue',
+    selectforeground='white',
+    normalbackground='white',
+    normalforeground='blue',
+    weekendbackground='lightblue',
+    weekendforeground='darkblue',
+    othermonthbackground='lightgray',
+    othermonthforeground='blue'
 )
 entry_start_date.grid(row=1, column=1, sticky="ew", pady=5)
 
@@ -465,26 +468,27 @@ entry_start_date.grid(row=1, column=1, sticky="ew", pady=5)
 entry_end_date = DateEntry(
     frame_inputs,
     width=12,
-    background='blue',          # Dropdown calendar background
-    foreground='white',         # Text color in the dropdown calendar
-    borderwidth=2,              # Border thickness
-    arrowsize=15,               # Arrow size for navigating months/years
-    font=("Arial", 12),         # Font for text
-    headersbackground='white',  # Header background (month/year, weekdays)
-    headersforeground='black',  # Header text color
-    selectbackground='blue',    # Selected date background
-    selectforeground='white',   # Selected date text color
-    normalbackground='white',   # Weekday cell background
-    normalforeground='blue',    # Weekday cell text color
-    weekendbackground='lightblue',  # Weekend cell background
-    weekendforeground='darkblue',   # Weekend cell text color
-    othermonthbackground='lightgray',  # Other month days background
-    othermonthforeground='blue'  # Other month days text color
+    background='blue',
+    foreground='white',
+    borderwidth=2,
+    arrowsize=15,
+    font=("Arial", 12),
+    headersbackground='white',
+    headersforeground='black',
+    selectbackground='blue',
+    selectforeground='white',
+    normalbackground='white',
+    normalforeground='blue',
+    weekendbackground='lightblue',
+    weekendforeground='darkblue',
+    othermonthbackground='lightgray',
+    othermonthforeground='blue'
 
 )
 entry_end_date.grid(row=2, column=1, sticky="ew", pady=5)
 
-window.bind("<FocusOut>", hide_calendar)
+# Handels hiding the calendar if the user clicks else where
+window.bind("<Button-1>", hide_calendar)
 
 # Start the GUI loop
 window.mainloop()
