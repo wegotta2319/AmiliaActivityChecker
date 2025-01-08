@@ -1,6 +1,6 @@
 import pandas as pd
 import tkinter as tk
-from fuzzywuzzy import fuzz, process
+from fuzzywuzzy import fuzz
 from tkinter import *
 from tkcalendar import DateEntry
 from tkinter import ttk, filedialog, Listbox, messagebox
@@ -142,6 +142,8 @@ def validate_dates_and_cost():
             if df.empty:
                 tree_output.insert("", "end", values=("No Match", "Ledger code", f"No entries found for {ledger_code_input}."))
                 return
+        else:
+            num_of_ledger_code_activities = 0
         # Loop to check every row in the excel sheet
         for i, row in df.iterrows():
             row_start_date = row['Start date'].date()
@@ -186,21 +188,23 @@ def validate_dates_and_cost():
                 num_of_invalid_cost += 1
             else:
                 num_of_valid_cost += 1
-        # Itterates through the sheet for the ledger codes
-        for i, row in df.iterrows():
+                
+        # Itterates through the sheet for the ledger codes   
+        if ledger_code_input:
+            for i, row in df.iterrows():
+                tree_output.insert("", "end", values=(
+                    row['Activity'],
+                    "Ledger Code Match",
+                    f"Ledgercode: {row['Ledger code']}"
+                ))
+            
+            
+            # Insert ledger code summary
             tree_output.insert("", "end", values=(
-                row['Activity'],
-                "Ledger Code Match",
-                f"Ledgercode: {row['Ledger code']}"
+                "Summary", 
+                "Ledger Code Matches", 
+                f"{num_of_ledger_code_activities} activities match Ledger Code: {ledger_code_input}"
             ))
-        
-        
-        # Insert ledger code summary
-        tree_output.insert("", "end", values=(
-            "Summary", 
-            "Ledger Code Matches", 
-            f"{num_of_ledger_code_activities} activities match Ledger Code: {ledger_code_input}"
-        ))
 
         # Existing summaries for start dates, end dates, and costs (print the tree)
         tree_output.insert("", "end", values=(
@@ -393,28 +397,20 @@ window.geometry("800x600")
 style = ttk.Style()
 style.theme_use("clam")
 
-# Styling for all the buttons
+# Styling for buttons
 style.configure("TButton", font=("Arial", 12))  # Default style for all buttons
 style.configure("TButton.validate.TButton", background="lightgreen", font=("Arial", 12, "bold"))
 style.configure("TButton.clear.TButton", background="orange", font=("Arial", 12, "bold"))
 style.configure("TButton.quit.TButton", background="red", foreground="white", font=("Arial", 12, "bold"))
 
-# Frame for input fields
+# Frames
+## Input frame
 frame_inputs = ttk.Frame(window, padding=10)
 frame_inputs.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
-# Frame for output
+## Output frame
 frame_output = ttk.Frame(window, padding=10)
 frame_output.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
-
-# Frame for analytics dashboard
-frame_dashboard = ttk.Frame(window, padding=10)
-frame_dashboard.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
-
-# Configure weights for resizing
-window.rowconfigure(2, weight=1)
-frame_dashboard.columnconfigure(0, weight=1)
-frame_dashboard.rowconfigure(0, weight=1)
 
 # File path label
 file_path = tk.StringVar()
@@ -474,13 +470,13 @@ scrollbar = ttk.Scrollbar(frame_output, orient="vertical", command=tree_output.y
 tree_output.configure(yscrollcommand=scrollbar.set)
 scrollbar.grid(row=0, column=1, sticky="ns")
 
-# Configure grid weights
+# Configure grid weights for resizing
 window.columnconfigure(0, weight=1)
 window.rowconfigure(1, weight=1)
 frame_output.columnconfigure(0, weight=1)
 frame_output.rowconfigure(0, weight=1)
 
-# ledger code drop box
+# Ledger code drop box
 entry_ledger_code.bind("<FocusIn>", show_suggestion_box)
 entry_ledger_code.bind("<FocusOut>", lambda _: suggestion_box.place_forget())
 
@@ -490,8 +486,9 @@ button_upload.config(command=lambda: [upload_file(), setup_suggestion_box()])
 # Key Bindings
 window.bind("<Return>", lambda event: validate_dates_and_cost())
 window.bind("<Escape>", lambda event: quit_program())
+window.bind("<Button-1>", hide_calendar) # Handles hiding the calendar if the user clicks elsewhere
 
-# Calendar implementation and customization
+# Calendar customization for start and end dates
 entry_start_date = DateEntry(
     frame_inputs,
     width=12,
@@ -534,17 +531,13 @@ entry_end_date = DateEntry(
 )
 entry_end_date.grid(row=2, column=1, sticky="ew", pady=5)
 
-# Handels hiding the calendar if the user clicks else where
-window.bind("<Button-1>", hide_calendar)
-
-# Search button and bar
+# Search functionality
 ttk.Label(frame_inputs, text="Search Activity:").grid(row=8, column=0, sticky="w", pady=5)
 search_entry = ttk.Entry(frame_inputs, width=40)
 search_entry.grid(row=8, column=1, pady=5)
 
 btn_search = ttk.Button(frame_inputs, text="Search", command=search_output)
 btn_search.grid(row=8, column=2, sticky="e", pady=5)
-
 
 # Start the GUI loop
 window.mainloop()
