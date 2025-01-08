@@ -1,12 +1,9 @@
 import pandas as pd
 import tkinter as tk
-import matplotlib.pyplot as plt
-import re
-import difflib
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from fuzzywuzzy import fuzz, process
 from tkinter import *
 from tkcalendar import DateEntry
-from tkinter import ttk, filedialog, StringVar, Toplevel, Listbox, messagebox
+from tkinter import ttk, filedialog, Listbox, messagebox
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from datetime import datetime
 
@@ -18,17 +15,19 @@ entry_min_cost = None
 entry_max_cost = None
 entry_ledger_code = None
 
-# Function to search through Treeview
 def search_treeview(treeview, search_term):
-    search_terms = [term.strip().lower() for term in search_term.split()]  # Split and lowercase all search terms
+    # Clean the search term by splitting and lowercasing
+    search_terms = [term.strip().lower() for term in search_term.split()]  
     
     if not search_terms:
         messagebox.showinfo("Search", "Please enter a search term.")
         return
     
     found = False
+    highest_match = None
+    highest_score = 0  # Track the highest fuzzy match score
     
-    # Loop through the items in the Treeview and remove any previous highlights
+    # Loop through the items and remove any previous highlights
     for item in treeview.get_children():
         treeview.item(item, tags=())  # Remove any previous highlight tag
     
@@ -36,11 +35,24 @@ def search_treeview(treeview, search_term):
     for item in treeview.get_children():
         item_values = treeview.item(item, "values")
         
-        # Check if all search terms are found in any of the columns as substrings
-        if all(term in str(value).lower() for value in item_values for term in search_terms):
-            found = True
-            # Highlight the matching item by setting a tag
+        # We will now check the similarity score for the "Activity" column only
+        activity = str(item_values[0]).lower()  # Assuming activity is the first column
+        
+        # Use fuzzywuzzy to get the similarity score for each item
+        score = fuzz.partial_ratio(search_term.lower(), activity)  # Partial ratio for fuzzy matching
+        
+        if score > highest_score:
+            highest_match = item
+            highest_score = score
+        
+        # If the score is above a certain threshold, we consider it a match
+        # You can adjust this threshold as per your needs (e.g., 80 out of 100)
+        if score >= 70:  
             treeview.item(item, tags=('highlight',))
+            found = True
+    
+    if highest_match:
+        treeview.item(highest_match, tags=('highlight',))  # Highlight the most similar activity
     
     if not found:
         messagebox.showinfo("Search", "No similar matches found.")
@@ -94,8 +106,8 @@ def validate_dates_and_cost():
         filtered_df = df
         
         # Changes user date inputs to 'date' data type in order to be compared to the sheet dates
-        start_date = datetime.strptime(start_date_input, "%m/%d/%Y").date() if start_date_input else None
-        end_date = datetime.strptime(end_date_input, "%m/%d/%Y").date() if end_date_input else None
+        start_date = datetime.strptime(start_date_input, "%m/%d/%y").date() if start_date_input else None
+        end_date = datetime.strptime(end_date_input, "%m/%d/%y").date() if end_date_input else None
 
         # Defines the columns required of the sheet
         required_columns = ['Start date', 'End date', 'Cost', 'Activity', 'Ledger code']
@@ -118,8 +130,8 @@ def validate_dates_and_cost():
         num_of_ledger_code_activities = 0
         total_num_of_activities = len(df)
 
-        df['Start date'] = pd.to_datetime(df['Start date'], format='%m/%d/%Y')
-        df['End date'] = pd.to_datetime(df['End date'], format='%m/%d/%Y')
+        df['Start date'] = pd.to_datetime(df['Start date'], format='%m/%d/%y')
+        df['End date'] = pd.to_datetime(df['End date'], format='%m/%d/%y')
 
         tree_output.delete(*tree_output.get_children())
         # Checks to see if the user entered a ledger code to be searched for
@@ -216,14 +228,14 @@ def validate_dates_and_cost():
 
 def show_calendar_start(event=None):
     global calendar_start
-    calendar_start = DateEntry(window, date_pattern="MM/dd/yyyy")
+    calendar_start = DateEntry(window, date_pattern="dd/mm/yyyy")
     calendar_start.place(x=entry_start_date.winfo_x(), y=entry_start_date.winfo_y() + entry_start_date.winfo_height())
     calendar_start.bind("<FocusOut>", lambda e: calendar_start.place_forget())
 
 
 def show_calendar_end(event=None):
     global calendar_end
-    calendar_end = DateEntry(window, date_pattern = "MM/dd/yyyy")
+    calendar_end = DateEntry(window, date_pattern = "dd/mm/yyyy")
     calendar_end.place(x=entry_start_date.winfo_x(), y=entry_start_date.winfo_y() + entry_start_date.winfo_height())
     calendar_end.bind("<FocusOut>", lambda e: calendar_start.place_forget())
 
