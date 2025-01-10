@@ -539,5 +539,9 @@ search_entry.grid(row=8, column=1, pady=5)
 btn_search = ttk.Button(frame_inputs, text="Search", command=search_output)
 btn_search.grid(row=8, column=2, sticky="e", pady=5)
 
+# Clearing the Calendar fields so it doesnt filter by Calendar of the bat
+entry_start_date.delete(0, tk.END)
+entry_end_date.delete(0, tk.END)
+    
 # Start the GUI loop
 window.mainloop()
